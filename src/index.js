@@ -7,6 +7,7 @@ act7.setMovieHeading(1, '#movie-title', '#movie-info', '#movie-director');
 // Iniciem el selector de pel·lícules
 act7.initMovieSelect('#select-movie');
 act7.setMovieSelectCallbacks();
+act7.addChangeEventToSelectHomeworld();
 act7.deleteAllCharacterTokens();
 act7.addChangeEventToSelectHomeworld();
-
+act7.addChangeEventToSelectMovie();

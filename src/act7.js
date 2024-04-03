@@ -1,98 +1,199 @@
 import swapi from './swapi.js';
 
 //Exemple d'inicialització de la llista de pel·lícules. Falten dades!
-async function setMovieHeading(movieId, titleSelector,infoSelector, directorSelector) {
+async function setMovieHeading(movieId, titleSelector, infoSelector, directorSelector) {
   // Obtenim els elements del DOM amb QuerySelector
-  const title = document.querySelector(titleSelector);
-  const info = document.querySelector(infoSelector);
-  const director = document.querySelector(directorSelector);
+  const title = document.querySelector(titleSelector);  
+  const info = document.querySelector(infoSelector)
+  const director = document.querySelector(directorSelector)
 
-  // Obtenim la informació de la pelicula
+  console.log(movieId)
+
+  if (!movieId){
+    title.innerHTML = ''
+    info.innerHTML = ''
+    director.innerHTML = ''
+    return
+  }
   const movieInfo = await swapi.getMovieInfo(movieId);
-  // Injectem
-  title.innerHTML = movieInfo.name;
-  info.innerHTML = `Episode ${movieInfo.episodeID} - ${movieInfo.release}`;
-  director.innerHTML = `Director: ${movieInfo.director}`;
+  // Inject
+  title.innerHTML = movieInfo.name
+  info.innerHTML = `Episode ${movieInfo.episodeID} - ${movieInfo.release}`
+  director.innerHTML = `Director: ${movieInfo.director}`
 }
 
 async function initMovieSelect(selector) {
- 
-    const select = document.querySelector(selector);
+  const movies = await swapi.listMoviesSorted();
+  //console.log(movies)
   
-    const movies = await swapi.listMoviesSorted();
-    //first option Selecciona una pel·lícula creating element
-    const option = document.createElement("option");
-    option.value = "";
-    option.text = "Selecciona una pel·lícula";
-    //inject
-    select.appendChild(option);
-    //use _filmIdToEpisodeId to get the episodeID
-    
-    movies.forEach((movie) => {
-      const option = document.createElement("option");
-      option.value = _filmIdToEpisodeId(movie.episodeID);
-      option.textContent = movie.name;
-      select.appendChild(option);
-    }
-     
-    );
+  const select = document.querySelector(selector);
 
-    
-    //change the values of setMovieHeading sending the id selected
-    setMovieSelectCallbacks();
-
-
-
-   
-
-    
+  const option = document.createElement('option')
   
+  option.value = '';
+  option.textContent = "Selecciona una pel·lícula" 
+  select.appendChild(option)
+
+
+  movies.forEach(movie => {
+    const option = document.createElement('option')
+    option.value = _filmIdToEpisodeId(movie.episodeID)
+    option.textContent = movie.name
+    select.appendChild(option)
+  })
 }
 
-function deleteAllCharacterTokens() {}
+
 
 // EVENT HANDLERS //
 
-function addChangeEventToSelectHomeworld() {
+// function addChangeEventToSelectHomeworld() {
+//   const selectHomeworld = document.querySelector('#select-homeworld');
+//   selectHomeworld.addEventListener('change', _handleOnSelectHomeworldChanged);
+// }
 
-  const select = document.querySelector('#select-homeworld');
-  select.addEventListener('change', _handleOnSelectHomeworldChanged);
+function addChangeEventToSelectHomeworld() {
+  const selectHomeworld = document.querySelector('#select-homeworld');
+  selectHomeworld.addEventListener('change', _handleOnSelectHomeworldChanged);
+}
+
+// Handle the change event of the homeworld select dropdown
+async function _handleOnSelectHomeworldChanged(event) {
+  const homeworld = event.target.value;
+const characters = await swapi.getMovieCharactersAndHomeworlds(1);
+const filteredCharacters = characters.characters.filter(character => character.homeworld === homeworld);
+  //if filteredCharacters is empty, show a missatge
+  if (filteredCharacters.length === 0) {
+    const list = document.querySelector('.list__characters');
+    list.innerHTML = '';
+    const li = document.createElement('li');
+    li.classList.add('list__item', 'item', 'character');
+    li.textContent = 'No characters found';
+    list.appendChild(li);
+    return;
+  }
+  const list = document.querySelector('.list__characters');
+  list.innerHTML = '';
+
+  filteredCharacters.forEach(character => {
+    const li = document.createElement('li');
+    li.classList.add('list__item', 'item', 'character');
+  
+    const img = document.createElement('img');
+    //image for id character /public/assets/people/numberarray.jpg get the id from url:"https://swapi.info/api/people/id" from id
+    //get url
+    const url = character.url;
+    //get id
+    const id = url.split("/")[5];
+    img.src = `./assets/people/${id}.jpg`;
+    img.classList.add('character__image');
+    li.appendChild(img);
+  
+    const h2 = document.createElement('h2');
+    h2.classList.add('character__name');
+    h2.textContent = character.name;
+    li.appendChild(h2);
+  
+    _addDivChild(li, 'character__birth', `<strong>Birth Year:</strong> ${character.birth_year}`);
+    _addDivChild(li, 'character__eye', `<strong>Eye color:</strong> ${character.eye_color}`);
+    _addDivChild(li, 'character__gender', `<strong>Gender:</strong> ${character.gender}`);
+    _addDivChild(li, 'character__home', `<strong>Home World:</strong> ${character.homeworld}`);
+
+    list.appendChild(li);
+
+  });
+  
+
 }
 
 async function _createCharacterTokens() {
-
+  const characters = await swapi.getMovieCharactersAndHomeworlds(1);
+  const list = document.querySelector('.list__characters');
+  characters.characters.forEach(character => {
+    const token = document.createElement('div');
+    token.classList.add('token');
+    token.textContent = character.name;
+    list.appendChild(token);
+  });
 }
 
-function _addDivChild(parent, className, html) {
-
+function _addDivChild(parent, className, innerHTML) {
+  const div = document.createElement('div');
+  div.className = className;
+  div.innerHTML = innerHTML;
+  parent.appendChild(div);
 }
 
 function setMovieSelectCallbacks() {
-  const select = document.querySelector('#select-movie');
-  select.addEventListener('change', _handleOnSelectMovieChanged);
+  const selectMovie = document.querySelector('#select-movie')
+
+  selectMovie.addEventListener('change', _handleOnSelectMovieChanged)
 }
 
 async function _handleOnSelectMovieChanged(event) {
-  const episodeID = event.target.value;
-  if (episodeID) {
-    const movie = await swapi.getMovieCharactersAndHomeworlds(episodeID);
-    _setMovieHeading(movie);
-    console.log(movie);
-    _populateHomeWorldSelector(_removeDuplicatesAndSort(movie.characters.map((character) => character.homeworld)));
-  } else {
-    //when epsiode id is empty we reset the movie heading
-    _setMovieHeading({ name: '', episodeID: '', release: '', director: '' });
-    //and clean filter options homeworld
-    _populateHomeWorldSelector([]);
+  const movieID = event.target.value
+  
+    await setMovieHeading(movieID, '.movie__title', '.movie__info', '.movie__director');
+
+    const selector = document.querySelector('#select-homeworld');
+    selector.innerHTML = '';
+
+
+  const caracters = await swapi.getMovieCharactersAndHomeworlds(movieID);
+  if (caracters.characters.length === 0) {
+    const list = document.querySelector('.list__characters');
+    list.innerHTML = '';
+    const li = document.createElement('li');
+    li.classList.add('list__item', 'item', 'character');
+    li.textContent = 'No characters found';
+    list.appendChild(li);
+    return;
   }
+  const planetes = caracters.characters.map((caracter) => caracter.homeworld);
+
+  const planetesNoDuplicats = _removeDuplicatesAndSort(planetes);
+
+  _populateHomeWorldSelector(planetesNoDuplicats, selector);
+
+  const pr = document.querySelector('.list__characters');
+  document.querySelector('.list__characters').innerHTML = '';
+  caracters.characters.forEach((character) => {
+    const li = document.createElement('li');
+    li.classList.add('list__item', 'item', 'character');
+  
+    const img = document.createElement('img');
+    //image for id character /public/assets/people/numberarray.jpg get the id from url:"https://swapi.info/api/people/id" from id
+    //get url
+    const url = character.url;
+    //get id
+    const id = url.split("/")[5];
+    img.src = `./assets/people/${id}.jpg`;
+    img.classList.add('character__image');
+    li.appendChild(img);
+  
+    const h2 = document.createElement('h2');
+    h2.classList.add('character__name');
+    h2.textContent = character.name;
+    li.appendChild(h2);
+  
+    _addDivChild(li, 'character__birth', `<strong>Birth Year:</strong> ${character.birth_year}`);
+    _addDivChild(li, 'character__eye', `<strong>Eye color:</strong> ${character.eye_color}`);
+    _addDivChild(li, 'character__gender', `<strong>Gender:</strong> ${character.gender}`);
+    _addDivChild(li, 'character__home', `<strong>Home World:</strong> ${character.homeworld.name}`);
+  
+    document.querySelector('.list__characters').appendChild(li);
+  });
+
+
+    
 }
 
 function _filmIdToEpisodeId(episodeID) {
-  const mapping = episodeToMovieIDs.find((element) => element.m === episodeID).e;
-  if (mapping) {
-    return mapping;
-  } else{
-    return null;
+  const mapping = episodeToMovieIDs.find(item => item.e === episodeID)
+  if (mapping){
+    return mapping.m
+  } else {
+    return null
   }
 }
 
@@ -114,32 +215,28 @@ let episodeToMovieIDs = [
 
 function _setMovieHeading({ name, episodeID, release, director }) {
   const title = document.querySelector('.movie__title');
-  const info = document.querySelector('.movie__info');
-  const directorElement = document.querySelector('.movie__director');
   title.textContent = name;
-  info.textContent = `Episode ${episodeID} - ${release}`;
-  directorElement.textContent = `Director: ${director}`;
 
-  return episodeID;
+  const info = document.querySelector('.movie__info');
+  info.textContent = `Episode ${episodeID} - ${release}`;
+
+  const directorElement = document.querySelector('.movie__director');
+  directorElement.textContent = `Director: ${director}`;
 }
 
-function _populateHomeWorldSelector(homeworlds) {
- //get de homeworlds
-  const select = document.querySelector('#select-homeworld');
-  //remove all options
-  select.innerHTML = '';
-  //create the first option
-  const option = document.createElement('option');
-  option.value = '';
-  option.textContent = 'Selecciona un planeta';
-  select.appendChild(option);
-  //create the options
-  homeworlds.forEach((homeworld) => {
+function _populateHomeWorldSelector(homeworlds, selector) {
+ 
     const option = document.createElement('option');
-    option.value = homeworld;
-    option.textContent = homeworld;
-    select.appendChild(option);
-  });
+    option.value = '';
+    option.textContent = 'Selecciona un homeworld';
+    selector.appendChild(option);
+
+    homeworlds.forEach(planeta => {
+      const option = document.createElement('option');
+      option.value = planeta;
+      option.textContent = planeta;
+      selector.appendChild(option);
+      })
 }
 
 /**
@@ -149,16 +246,17 @@ function _removeDuplicatesAndSort(elements) {
   // Al crear un Set eliminem els duplicats
   const set = new Set(elements);
   // tornem a convertir el Set en un array
-  const array = Array.from(set);
+  const array = [...set].sort();
   // i ordenem alfabèticament
-  return array.sort(swapi._compareByName);
+  return array;
 }
 
 const act7 = {
   setMovieHeading,
   setMovieSelectCallbacks,
+  addChangeEventToSelectHomeworld,
   initMovieSelect,
-  deleteAllCharacterTokens,
+  // deleteAllCharacterTokens,
   addChangeEventToSelectHomeworld,
 };
 
